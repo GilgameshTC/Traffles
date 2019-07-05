@@ -17,6 +17,7 @@
         android:layout_marginStart="8dp"
         android:clickable="true"
         android:focusableInTouchMode="false"
+        android:tint="@android:color/background_light"
         app:layout_constraintBottom_toTopOf="@+id/resetButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -30,10 +31,11 @@
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
         android:clickable="true"
+        android:tint="@android:color/background_light"
         app:layout_constraintBottom_toTopOf="@+id/navigation"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@android:drawable/ic_menu_revert" />
+        app:srcCompat="@android:drawable/ic_menu_rotate" />
 
     <android.support.design.widget.BottomNavigationView
         android:id="@+id/navigation"
@@ -57,7 +59,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintVertical_bias="0.3"
+        app:layout_constraintVertical_bias="0.4"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 

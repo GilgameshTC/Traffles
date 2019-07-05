@@ -1,6 +1,7 @@
 package com.gilgameshtc.traffles;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -13,6 +14,8 @@ import android.text.format.DateFormat;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 
@@ -170,6 +173,7 @@ public class MainActivity extends AppCompatActivity {
         // Set an EditText view to get user input
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.requestFocus();
         setBudgetAlertBuilder.setView(input);
         setBudgetAlertBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
@@ -195,6 +199,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         setBudgetAlert = setBudgetAlertBuilder.create();
+        setBudgetAlert.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
     }
 
     private void setupUpdateBudgetAlert(AlertDialog.Builder updateBudgetAlertBuilder) {
@@ -203,6 +208,7 @@ public class MainActivity extends AppCompatActivity {
         // Set an EditText view to get user input
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.requestFocus();
         updateBudgetAlertBuilder.setView(input);
         updateBudgetAlertBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
@@ -228,6 +234,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         updateBudgetAlert = updateBudgetAlertBuilder.create();
+        updateBudgetAlert.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
     }
 
     private void setupInvalidInputAlert(AlertDialog.Builder invalidInputAlertBuilder) {
