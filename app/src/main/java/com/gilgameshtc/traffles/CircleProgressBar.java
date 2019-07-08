@@ -92,4 +92,13 @@ public class CircleProgressBar extends View {
         this.progress = progress;
         invalidate();// Notify the view to redraw it self (the onDraw method is called)
     }
+
+    // Only set background color
+    public void setColor(int color) {
+        this.color = color;
+        backgroundPaint.setColor(color);
+        //foregroundPaint.setColor(color);
+        invalidate();
+        requestLayout();
+    }
 }

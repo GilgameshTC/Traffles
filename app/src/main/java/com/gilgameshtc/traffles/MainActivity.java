@@ -3,6 +3,7 @@ package com.gilgameshtc.traffles;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
@@ -26,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
     // UI
     private Button budget;
+    private CircleProgressBar progressBar;
     private FloatingActionButton addButton;
     private FloatingActionButton resetButton;
     private AlertDialog setBudgetAlert;
@@ -89,6 +91,24 @@ public class MainActivity extends AppCompatActivity {
         // Retrieve the budget balance
         int balance = savedSettings.getInt(StorageManager.BUDGET_BALANCE_KEY, -1);
         budget.setText(String.valueOf(balance));
+    }
+
+    private void updateProgressBar() {
+        float balance = savedSettings.getInt(StorageManager.BUDGET_BALANCE_KEY, 1);
+        float dailyCap = savedSettings.getInt(StorageManager.BUDGET_DAILY_CAP_KEY, 1);
+        // Invert progress
+        float progress = (-(balance / dailyCap) * 100) + 100;
+        if (progress < 40) {
+            // Budget balance is healthy
+            progressBar.setColor(Color.GREEN);
+        } else if (progress >= 40 && progress <= 80) {
+            // Budget balance is diminishing
+            progressBar.setColor(Color.YELLOW);
+        } else {
+            // Budget balance is critical
+            progressBar.setColor(Color.RED);
+        }
+        progressBar.setProgress(progress);
     }
 
     private String getCurrentMonth() {
@@ -183,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
                     // Update UI
                     validForTransaction = true;
                     updateBudgetUI();
+                    updateProgressBar();
                 } else {
                     invalidInputAlert.setTitle("Invalid input");
                     invalidInputAlert.show();
@@ -218,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
                     updateBudgetBalance(newBalance);
                     // Update UI
                     updateBudgetUI();
+                    updateProgressBar();
                 } else {
                     invalidInputAlert.setTitle("Invalid input / no budget is set!");
                     invalidInputAlert.show();
@@ -254,6 +276,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialog, int which) {
                 resetBudget();
                 loadBudgetUI();
+                updateProgressBar();
             }
         });
 
@@ -306,6 +329,9 @@ public class MainActivity extends AppCompatActivity {
         budget = findViewById(R.id.budgetText);
         loadBudgetUI();
         budget.setOnClickListener(budgetTextButtonListener);
+        // Set up Circular Progress Bar
+        progressBar = findViewById(R.id.custom_progressBar);
+        updateProgressBar();
     }
 
     private void configureButtonsUI() {
