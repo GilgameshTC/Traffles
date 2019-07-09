@@ -2,7 +2,6 @@ package com.gilgameshtc.traffles;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -21,9 +20,7 @@ import android.widget.EditText;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
-
-    private SharedPreferences savedSettings;
-    private boolean validForTransaction;
+    private StorageManager database;
 
     // UI
     private Button budget;
@@ -55,33 +52,31 @@ public class MainActivity extends AppCompatActivity {
     // ----------===== Logic =====----------
     // Precondition: Should only be called after budget button and userPref have been initialized.
     private void loadBudgetUI() {
-        int expenditureSoFar;
+        float expenditureSoFar = 0;
         // Retrieve the budget balance
-        int balance = savedSettings.getInt(StorageManager.BUDGET_BALANCE_KEY, -1);
+        float balance = database.getBalance();
         if (balance < 0) {
             // User has not set up budget cap
-            expenditureSoFar = 0;
-            validForTransaction = false;
+            database.makeInvalidForTransaction();
             budget.setText(String.valueOf(expenditureSoFar));
             return;
         }
         // Check whether the budget cap has expired
-        String monthOfCap = savedSettings.getString(StorageManager.BUDGET_MONTH_KEY, null);
-        int dateOfCap = savedSettings.getInt(StorageManager.BUDGET_DAY_KEY, -1);
+        String monthOfCap = database.getBudgetMonth();
+        int dateOfCap = database.getDayOfCap();
         if (monthOfCap != null && monthOfCap.equalsIgnoreCase(getCurrentMonth())) {
             // budget cap is up to date
             expenditureSoFar = balance;
             if (dateOfCap > 0 && dateOfCap != getTodayDate()) {
                 // budget needs to be updated
-                int dailyCap = savedSettings.getInt(StorageManager.BUDGET_DAILY_CAP_KEY, 0);
+                float dailyCap = database.getDailyCap();
                 expenditureSoFar += dailyCap * (getTodayDate() - dateOfCap);
-                updateBudgetBalance(expenditureSoFar);
+                database.updateBalance(expenditureSoFar, getTodayDate());
             }
-            validForTransaction = true;
+            database.makeValidForTransaction();
         } else {
             // budget is out of date
-            expenditureSoFar = 0;
-            validForTransaction = false;
+            database.makeInvalidForTransaction();
         }
         // Update UI with user's budget
         budget.setText(String.valueOf(expenditureSoFar));
@@ -89,18 +84,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateBudgetUI() {
         // Retrieve the budget balance
-        int balance = savedSettings.getInt(StorageManager.BUDGET_BALANCE_KEY, -1);
+        float balance = database.getBalance();
         budget.setText(String.valueOf(balance));
     }
 
     private void updateProgressBar() {
-        float balance = savedSettings.getInt(StorageManager.BUDGET_BALANCE_KEY, 1);
-        float dailyCap = savedSettings.getInt(StorageManager.BUDGET_DAILY_CAP_KEY, 1);
+        float balance = database.getBalance();
+        float dailyCap = database.getDailyCap();
         // Invert progress
         float progress = (-(balance / dailyCap) * 100) + 100;
         if (progress < 40) {
             // Budget balance is healthy
             progressBar.setColor(Color.GREEN);
+            if (progress < 0) {
+                progress = 0;
+            }
         } else if (progress >= 40 && progress <= 80) {
             // Budget balance is diminishing
             progressBar.setColor(Color.YELLOW);
@@ -120,42 +118,6 @@ public class MainActivity extends AppCompatActivity {
         Date currentDate = new Date();
         String day = (String)DateFormat.format("dd", currentDate);
         return Integer.parseInt(day); // e.g. 20
-    }
-
-    // Save user's new budget into user preference
-    private void setBudget(int budgetValue) {
-        SharedPreferences.Editor preferencesEditor = savedSettings.edit();
-        // Save new budget
-        preferencesEditor.putInt(StorageManager.BUDGET_DAILY_CAP_KEY, budgetValue);
-        preferencesEditor.putInt(StorageManager.BUDGET_BALANCE_KEY, budgetValue);
-        // Save current month
-        preferencesEditor.putString(StorageManager.BUDGET_MONTH_KEY, getCurrentMonth());
-        preferencesEditor.putInt(StorageManager.BUDGET_DAY_KEY, getTodayDate());
-        preferencesEditor.commit();
-        validForTransaction = true;
-    }
-
-    // Pre-condition: There is valid balance in database.
-    // Returns new balance value
-    private int incurTransaction(int transactionValue) {
-        int balance = savedSettings.getInt(StorageManager.BUDGET_BALANCE_KEY, -1);
-        return balance - transactionValue;
-    }
-
-    private void updateBudgetBalance(int newBalance) {
-        SharedPreferences.Editor preferencesEditor = savedSettings.edit();
-        preferencesEditor.putInt(StorageManager.BUDGET_BALANCE_KEY, newBalance);
-        preferencesEditor.putInt(StorageManager.BUDGET_DAY_KEY, getTodayDate());
-        preferencesEditor.commit();
-    }
-
-    private void resetBudget() {
-        SharedPreferences.Editor preferencesEditor = savedSettings.edit();
-        preferencesEditor.remove(StorageManager.BUDGET_DAILY_CAP_KEY);
-        preferencesEditor.remove(StorageManager.BUDGET_BALANCE_KEY);
-        preferencesEditor.remove(StorageManager.BUDGET_MONTH_KEY);
-        preferencesEditor.remove(StorageManager.BUDGET_DAY_KEY);
-        preferencesEditor.commit();
     }
     // ----------=================----------
 
@@ -190,18 +152,18 @@ public class MainActivity extends AppCompatActivity {
         setBudgetAlertBuilder.setCancelable(true);
         // Set an EditText view to get user input
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.requestFocus();
         setBudgetAlertBuilder.setView(input);
         setBudgetAlertBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
                 String value = input.getText().toString();
                 // Check that user only inputs positive integer
-                if (value.matches("[0-9]+")) {
+                if (value.matches("[0-9]+(\\.[0-9]{1,2})?")) {
                     int budgetValue = Integer.parseInt(value);
-                    setBudget(budgetValue);
+                    database.setNewBudget(budgetValue, getCurrentMonth(), getTodayDate());
                     // Update UI
-                    validForTransaction = true;
+                    database.makeValidForTransaction();
                     updateBudgetUI();
                     updateProgressBar();
                 } else {
@@ -226,17 +188,18 @@ public class MainActivity extends AppCompatActivity {
         updateBudgetAlertBuilder.setCancelable(true);
         // Set an EditText view to get user input
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.requestFocus();
         updateBudgetAlertBuilder.setView(input);
         updateBudgetAlertBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int whichButton) {
                 String value = input.getText().toString();
                 // Check that user only inputs positive integer
-                if (value.matches("[0-9]+") && validForTransaction) {
-                    int transactionValue = Integer.parseInt(value);
-                    int newBalance = incurTransaction(transactionValue);
-                    updateBudgetBalance(newBalance);
+                if (value.matches("[0-9]+(\\.[0-9]{1,2})?") &&
+                        database.isValidForTransaction()) {
+                    float transactionValue = Float.parseFloat(value);
+                    float newBalance = database.incurTransaction(transactionValue);
+                    database.setBalance(newBalance);
                     // Update UI
                     updateBudgetUI();
                     updateProgressBar();
@@ -274,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
         confirmationAlertBuilder.setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                resetBudget();
+                database.resetBudget();
                 loadBudgetUI();
                 updateProgressBar();
             }
@@ -320,8 +283,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void configureStorageManager() {
-        // Get user saved data
-        savedSettings = getSharedPreferences("userPref", MODE_PRIVATE);
+        database = new StorageManager(getSharedPreferences("userPref", MODE_PRIVATE));
     }
 
     private void configureBudgetUI() {
